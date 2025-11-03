@@ -1,0 +1,111 @@
+# -----------------------------------------------------------------
+# STEP 2: IMPORT LIBRARIES AND LOAD DATA
+# -----------------------------------------------------------------
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+
+# Load the dataset
+df = pd.read_csv('emails.csv')
+
+# -----------------------------------------------------------------
+# STEP 3: DATA EXPLORATION AND PREPROCESSING
+# -----------------------------------------------------------------
+print("\n--- Data Head ---")
+print(df.head())
+
+print("\n--- Data Info ---")
+df.info()
+
+# Check for missing values
+print(f"\nMissing values: {df.isnull().sum().sum()}")
+
+# Define features (X) and target (y)
+# 'Email No.' is id column
+# 'Prediction' is target (0 not spam / 1 spam)
+X = df.drop(columns=['Email No.', 'Prediction'])
+y = df['Prediction']
+
+print(f"\nShape of features (X): {X.shape}")
+print(f"Shape of target (y): {y.shape}")
+
+# -----------------------------------------------------------------
+# STEP 4: SPLIT AND SCALE THE DATA
+# -----------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+print("\n--- Data successfully split and scaled ---")
+
+# -----------------------------------------------------------------
+# STEP 5: MODEL 1 - KNN
+# -----------------------------------------------------------------
+print("\n--- Training KNN ---")
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train_scaled, y_train)
+y_pred_knn = knn.predict(X_test_scaled)
+
+# -----------------------------------------------------------------
+# STEP 6: MODEL 2 - SVM
+# -----------------------------------------------------------------
+print("\n--- Training SVM ---")
+svm = SVC(kernel='linear', random_state=42)
+svm.fit(X_train_scaled, y_train)
+y_pred_svm = svm.predict(X_test_scaled)
+
+print("\n--- Model Training Complete ---")
+
+# -----------------------------------------------------------------
+# STEP 7: PERFORMANCE
+# -----------------------------------------------------------------
+
+print("\n================= KNN Performance ==================")
+knn_accuracy = accuracy_score(y_test, y_pred_knn)
+print(f"Accuracy: {knn_accuracy:.4f}")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_knn))
+
+cm_knn = confusion_matrix(y_test, y_pred_knn)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm_knn, annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Not Spam', 'Spam'], yticklabels=['Not Spam', 'Spam'])
+plt.title('KNN Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
+
+print("\n================= SVM Performance ==================")
+svm_accuracy = accuracy_score(y_test, y_pred_svm)
+print(f"Accuracy: {svm_accuracy:.4f}")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_svm))
+
+cm_svm = confusion_matrix(y_test, y_pred_svm)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm_svm, annot=True, fmt='d', cmap='Greens',
+            xticklabels=['Not Spam', 'Spam'], yticklabels=['Not Spam', 'Spam'])
+plt.title('SVM Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
+
+# -----------------------------------------------------------------
+# STEP 8: FINAL COMPARISON
+# -----------------------------------------------------------------
+print("\n================= Model Comparison ==================")
+print(f"KNN Accuracy:   {knn_accuracy:.4f}")
+print(f"SVM Accuracy:   {svm_accuracy:.4f}")
+
+if svm_accuracy > knn_accuracy:
+    print("\nSVM performed better than KNN.")
+else:
+    print("\nKNN performed better than or equal to SVM.")
