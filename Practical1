@@ -1,0 +1,111 @@
+import pandas as pd 
+import matplotlib.pyplot as plt
+import numpy as np 
+import seaborn as sns
+from sklearn.model_selection import train_test_split as tts
+from sklearn import metrics as me
+from sklearn import preprocessing as pp
+from sklearn.ensemble import RandomForestRegressor as rf
+from sklearn.preprocessing import StandardScaler 
+from sklearn.linear_model import LinearRegression as lr
+
+data = pd.read_csv("uber.csv")
+data = data.drop(['Unnamed: 0' , 'key'] , axis = 1 )
+
+# convert first then dropna (IMPORTANT FIX)
+data['pickup_datetime'] = pd.to_datetime(data['pickup_datetime'], errors='coerce')
+data = data.dropna()
+
+data = data.assign(
+    second = data.pickup_datetime.dt.second ,
+    minute = data.pickup_datetime.dt.minute ,
+    hour = data.pickup_datetime.dt.hour ,
+    month = data.pickup_datetime.dt.month ,
+    year = data.pickup_datetime.dt.year , 
+    dayofweek = data.pickup_datetime.dt.dayofweek
+)
+
+def distance_transform (long1 , lat1 , long2 , lat2):
+    longi1 , lati1 , longi2 , lati2 = map(np.radians , [long1 , lat1 , long2 , lat2])
+    distance_long = longi2 - longi1
+    distance_lati = lati2 - lati1
+    a = np.sin(distance_lati / 2) ** 2 + np.cos(lati1) * np.cos(lati2) * np.sin(distance_long /2) ** 2
+    c = 2 * np.arcsin(np.sqrt(a)) * 6371 
+    return c
+
+data['Distance'] = distance_transform(data['pickup_longitude'] , data['pickup_latitude'] , data['dropoff_longitude'] , data['dropoff_latitude'])
+
+plt.scatter(data['Distance'] , data['fare_amount'])
+plt.xlabel("Distance")
+plt.ylabel("Fare Amount")
+
+plt.figure(figsize = (20 , 12))
+sns.boxplot(data = data)
+
+data.drop(data[data['Distance']>= 60].index, inplace=True)
+data.drop(data[data['fare_amount']<=0].index, inplace=True)
+data.drop(data[(data['fare_amount']>100) & (data['Distance']<1)].index, inplace = True)
+data.drop(data[(data['fare_amount']<100) & (data['Distance']>100)].index , inplace = True)
+
+plt.scatter(data['Distance'] , data['fare_amount'])
+plt.xlabel("Dist")
+plt.ylabel("FA")
+
+# FIX for corr
+corr = data.select_dtypes(include='number').corr()
+print(corr)
+
+X = data['Distance'].values.reshape(-1,1)
+Y = data['fare_amount'].values.reshape(-1,1)
+
+std = StandardScaler()
+y_std = std.fit_transform(Y)
+x_std = std.fit_transform(X)
+
+x_train , x_test , y_train , y_test = tts(x_std , y_std , test_size = 0.2 , random_state = 0 )
+
+l_regression = lr()
+l_regression.fit(x_train , y_train)
+print("Training Set Score = {:.2f}".format(l_regression.score(x_train , y_train)))
+print("Test Set Score = {:.7f}".format(l_regression.score(x_test , y_test)))
+
+y_pred = l_regression.predict(x_test)
+
+# FIX assigning to DataFrame
+result = pd.DataFrame()
+result['actual'] = y_test.flatten()
+result['predicted'] = y_pred.flatten()
+print(result.sample(10))
+
+print(me.mean_absolute_error(y_test , y_pred))
+print(me.mean_absolute_percentage_error(y_test ,y_pred))
+
+plt.subplot(2,2,1)
+plt.scatter(x_train , y_train , color = 'red')
+plt.plot(x_train , l_regression.predict(x_train) , color = 'blue')
+plt.title("Nayti Lafdi")
+plt.ylabel("Fare AMount")
+plt.xlabel("Distance")
+
+plt.subplot(2,2,2)
+plt.scatter(x_test , y_test , color = 'red')
+plt.plot(x_train , l_regression.predict(x_train) , color = 'blue')
+plt.ylabel("Fare Amount")
+plt.xlabel("Distance")
+plt.title("Nayti Lafdi (Test set)")
+
+rf_regression = rf(n_estimators = 100 , random_state = 10)
+rf_regression.fit(x_train , y_train)
+y_pred_rf = rf_regression.predict(x_test)
+
+result = pd.DataFrame()
+result['Actual'] = y_test.flatten()
+result['Predicted'] = y_pred_rf.flatten()
+print(result.sample(10))
+
+plt.scatter(x_test , y_test , c='b' , alpha =0.5  , marker = '.' , label ='real' )
+plt.scatter(x_test , y_pred_rf , c='r' , alpha = 0.5 , marker = '.' , label = 'predicted')
+plt.xlabel("Carrot")
+plt.ylabel("Price")
+plt.grid(color ='#D3D3D3' , linestyle = 'solid' )
+plt.legend(loc = 'lower right')
