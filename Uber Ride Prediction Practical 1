@@ -1,12 +1,12 @@
-import pandas as pd 
+import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np 
+import numpy as np
 import seaborn as sns
 from sklearn.model_selection import train_test_split as tts
 from sklearn import metrics as me
 from sklearn import preprocessing as pp
 from sklearn.ensemble import RandomForestRegressor as rf
-from sklearn.preprocessing import StandardScaler 
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression as lr
 
 data = pd.read_csv("uber.csv")
@@ -21,7 +21,7 @@ data = data.assign(
     minute = data.pickup_datetime.dt.minute ,
     hour = data.pickup_datetime.dt.hour ,
     month = data.pickup_datetime.dt.month ,
-    year = data.pickup_datetime.dt.year , 
+    year = data.pickup_datetime.dt.year ,
     dayofweek = data.pickup_datetime.dt.dayofweek
 )
 
@@ -30,7 +30,7 @@ def distance_transform (long1 , lat1 , long2 , lat2):
     distance_long = longi2 - longi1
     distance_lati = lati2 - lati1
     a = np.sin(distance_lati / 2) ** 2 + np.cos(lati1) * np.cos(lati2) * np.sin(distance_long /2) ** 2
-    c = 2 * np.arcsin(np.sqrt(a)) * 6371 
+    c = 2 * np.arcsin(np.sqrt(a)) * 6371
     return c
 
 data['Distance'] = distance_transform(data['pickup_longitude'] , data['pickup_latitude'] , data['dropoff_longitude'] , data['dropoff_latitude'])
@@ -55,8 +55,11 @@ plt.ylabel("FA")
 corr = data.select_dtypes(include='number').corr()
 print(corr)
 
-X = data['Distance'].values.reshape(-1,1)
-Y = data['fare_amount'].values.reshape(-1,1)
+plt.figure(figsize=(10, 8))
+sns.heatmap(data.corr(), annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Correlation Heatmap of Features')
+plt.show() # Use plt.show() to display in Colab
+print("Generated correlation heatmap.")
 
 std = StandardScaler()
 y_std = std.fit_transform(Y)
