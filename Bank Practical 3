@@ -1,0 +1,104 @@
+# -----------------------------------------------------------------
+# STEP 1: IMPORT LIBRARIES
+# -----------------------------------------------------------------
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+
+# -----------------------------------------------------------------
+# STEP 2: READ THE DATASET
+# -----------------------------------------------------------------
+try:
+    df = pd.read_csv('Churn_Modelling.csv')
+    print("--- Dataset loaded successfully ---")
+except FileNotFoundError:
+    print("Error: 'Churn_Modelling.csv' not found. Please upload it to your environment.")
+    raise
+
+print("\n--- Data Overview ---")
+print(df.head())
+
+# -----------------------------------------------------------------
+# STEP 3: FEATURE AND TARGET SEPARATION
+# -----------------------------------------------------------------
+# Drop unnecessary columns (CustomerId, Surname, RowNumber are identifiers)
+X = df.drop(columns=['RowNumber', 'CustomerId', 'Surname', 'Exited'])
+y = df['Exited']
+
+# -----------------------------------------------------------------
+# STEP 4: ENCODE CATEGORICAL VARIABLES
+# -----------------------------------------------------------------
+# 'Geography' and 'Gender' are categorical — convert them to numeric
+X = pd.get_dummies(X, columns=['Geography', 'Gender'], drop_first=True)
+
+# -----------------------------------------------------------------
+# STEP 5: SPLIT THE DATA INTO TRAINING AND TEST SETS
+# -----------------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# -----------------------------------------------------------------
+# STEP 6: NORMALIZE (SCALE) THE DATA
+# -----------------------------------------------------------------
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+print("\n--- Data successfully split and scaled ---")
+
+# -----------------------------------------------------------------
+# STEP 7: BUILD THE NEURAL NETWORK MODEL
+# -----------------------------------------------------------------
+model = Sequential([
+    Dense(16, input_dim=X_train_scaled.shape[1], activation='relu'),
+    Dropout(0.2),
+    Dense(8, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+
+# -----------------------------------------------------------------
+# STEP 8: COMPILE AND TRAIN THE MODEL
+# -----------------------------------------------------------------
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+history = model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, validation_split=0.2, verbose=0)
+
+# -----------------------------------------------------------------
+# STEP 9: MODEL EVALUATION
+# -----------------------------------------------------------------
+# Predict probabilities and convert to 0 or 1
+y_pred = (model.predict(X_test_scaled) > 0.5).astype(int)
+
+# Accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"\nModel Accuracy: {accuracy:.4f}")
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Stayed', 'Left'], yticklabels=['Stayed', 'Left'])
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
+
+# Classification Report
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, target_names=['Stayed', 'Left']))
+
+# -----------------------------------------------------------------
+# STEP 10: ACCURACY PLOT (OPTIONAL IMPROVEMENT POINT)
+# -----------------------------------------------------------------
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy Progress')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
